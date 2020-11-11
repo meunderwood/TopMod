@@ -1,0 +1,39 @@
+#ifndef DLFLCURVATURECONNECT_HH
+#define DLFLCURVATURECONNECT_HH
+
+
+#include <DLFLCore.hh>
+#include <DLFLCoreExt.hh>
+//for loging and debuging only
+#include <QDebug>
+#include <QString>
+#define STRING(x) QString::number(x, 'g',6)
+
+namespace DLFL {
+
+    class CurvatureInterpolation
+    {
+        public:
+            CurvatureInterpolation(const Vector3d &firstPoint, const Vector3d &firstNormal, const Vector3d &secondPoint, const Vector3d &secondNormal);
+            void interpolate(const double &t, Vector3d &p, Vector3d &v) const;
+            
+        protected:
+            Vector3d p1,p2,n1,n2,axis, q1, q2, q1q2;
+            double angle, w1, w2;
+            bool is_valied;
+            
+    };
+
+
+
+
+
+
+
+
+
+
+
+}//end of namespace
+
+#endif // DLFLCURVATURECONNECT_HH

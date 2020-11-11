@@ -1,0 +1,345 @@
+/*
+*
+* ***** BEGIN GPL LICENSE BLOCK *****
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software  Foundation,
+* Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*
+* The Original Code is Copyright (C) 2005 by xxxxxxxxxxxxxx
+* All rights reserved.
+*
+* The Original Code is: all of this file.
+*
+* Contributor(s): none yet.
+*
+* ***** END GPL LICENSE BLOCK *****
+*/
+
+#ifndef _DLFLCORE_EXT_H_
+#define _DLFLCORE_EXT_H_
+
+#include "DLFLCommon.hh"
+#include <Vector4d.hh>
+#include <Quaternion.hh>
+
+namespace DLFL {
+
+
+class Regularize{
+    Vector3dArray input, outPut;
+    Vector3d Center;
+    int Size;
+    double Length;
+  public:
+    Regularize(Vector3dArray pnts):input(pnts){
+    Size = pnts.size();
+    outPut.reserve(Size);
+    Center = Vector3d(0, 0, 0);
+    for (int i = 0; i < Size; i++)
+    {
+      Center += input[i];
+    }
+    Center /= Size;
+    Length = 0;
+    for (int i = 0; i < Size; i++){
+      Length += sqrt((Center - input[i]).lengthsqr());
+    }
+  }
+
+  private:
+    void equalize(){
+    outPut.clear();
+    outPut.reserve(Size);
+    for (int i = 0; i < Size; i++)
+    {
+      int before = i - 1;
+      if(before == -1)before = Size - 1;
+      int next = i + 1;
+      if(next == Size) next = 0;
+      int a=1.0, b = 2.0;
+      Vector3d p = a * input[before] + b * input[i] + a * input[next];
+      p /= (a + b + a);
+      outPut.push_back(p);
+    }
+    input.clear();
+    input.insert(input.begin(),outPut.begin(),outPut.end());
+  }
+
+  public:
+    Vector3dArray Equalize(int n){
+    for (int i = 0; i < n; i++){
+      equalize();
+    }
+    Vector3dArray results;
+    results.reserve(Size);
+    Vector3dArray vecs;
+    vecs.reserve(Size);
+    double t = 0;
+    for (int i = 0; i < Size; i++){
+      Vector3d v = input[i] - Center;
+      vecs.push_back(v);
+      double d = sqrt(v.lengthsqr());
+      t += d;
+    }
+    double scale = Length / t;
+    for (int i = 0; i < Size; i++)
+    {
+      Vector3d p = Center + vecs[i] * scale;
+      results.push_back(p);
+    }
+    return results;
+  }
+};
+
+//uses angle bisector
+  class RegularizeTriangle{
+    Vector3d Center;
+    Vector3dArray input;
+    Vector3dArray outPut;
+    const int Size = 3;
+    double Length;
+  public:
+    RegularizeTriangle(Vector3dArray pnts):input(pnts){
+
+      outPut.reserve()
+      this.Center = GetCenter(this.input);
+      this.Length = 0;
+      for (int i = 0; i < Size; i++){
+        this.Length += (this.Center - this.input[i]).Length;
+        //Print(this.input[i]);
+      }
+      Print("Length: " + this.Length.ToString());
+    }
+
+    void equalize (){
+      Vector3d va = this.input[2] - this.input[1];
+      double a = va.Length;
+      Vector3d vb = this.input[0] - this.input[2];
+      double b = vb.Length;
+      Vector3d vc = this.input[1] - this.input[0];
+      double c = vc.Length;
+
+      double a1 = c / (b + c);
+      double b1 = a / (a + c);
+      double c1 = b / (a + b);
+
+      this.outPut[0] = this.input[1] + va * a1;
+      this.outPut[1] = this.input[2] + vb * b1;
+      this.outPut[2] = this.input[0] + vc * c1;
+
+      this.input[0] = this.outPut[0];
+      this.input[1] = this.outPut[1];
+      this.input[2] = this.outPut[2];
+    }
+
+    static Point3d[] Next(Point3d[] pnts){
+      Vector3d va = pnts[2] - pnts[1];
+      double a = va.Length;
+      Vector3d vb = pnts[0] - pnts[2];
+      double b = vb.Length;
+      Vector3d vc = pnts[1] - pnts[0];
+      double c = vc.Length;
+
+      double a1 = c / (b + c);
+      double b1 = a / (a + c);
+      double c1 = b / (a + b);
+      return new Point3d[3]
+        {
+        pnts[1] + va * a1,
+        pnts[2] + vb * b1,
+        pnts[0] + vc * c1,
+        };
+    }
+
+    static Point3d Front(Point3d[] pnts){
+      Vector3d va = pnts[2] - pnts[1];
+      double a = va.Length;
+      Vector3d vb = pnts[0] - pnts[2];
+      double b = vb.Length;
+      Vector3d vc = pnts[1] - pnts[0];
+      double c = vc.Length;
+
+      double a1 = c / (b + c);
+      return pnts[1] + va * a1;
+    }
+
+    static Point3d GetCenter(Point3d[] p){
+      Point3d front = Front(p);
+      Point3d[] pnts = new Point3d[3]{p[1],front,p[0]};
+      return Front(pnts);
+    }
+
+    public List<Point3d> Equalize(int n){
+      int m = (int) (n / 2);
+      for (int i = 0; i < m; i++){
+        this.equalize();
+        Print("iteration: " + (2 * i).ToString());
+        this.equalize();
+        Print("iteration: " + (2 * i + 1).ToString());
+      }
+      List<Point3d> results = new List<Point3d>();
+      this.Center = GetCenter(this.input);
+      List<Vector3d> vecs = new List<Vector3d>();
+      double t = 0;
+      Print(this.input.Length);
+
+      for (int i = 0; i < Size; i++){
+        Vector3d v = this.input[i] - this.Center;
+        vecs.Add(v);
+        double d = v.Length;
+        t += d;
+      }
+      Print("Second Length: " + t.ToString());
+      double scale = this.Length / t;
+      Print("Scale: " + scale.ToString());
+
+      for (int i = 0; i < Size; i++)
+      {
+        Point3d p = this.Center + vecs[i] * scale;
+        results.Add(p);
+      }
+      return results;
+    }
+  };
+
+  // Print an array of doubles separated by tabs
+  void printArray(const DoubleArray& array);
+  // Print an array of Vector3ds separated by newlines
+  void printArray(const Vector3dArray& array);
+
+  // The Hermite basis vector
+  Vector4d Hv(double t);
+  // Hermite basis vector for tangents
+  Vector4d dHv(double t);
+  // Derivative of dHv - second derivative of Hv
+  Vector4d ddHv(double t);
+
+  // Find centroid of given set of points
+  Vector3d centroid(const Vector3dArray& poly);
+
+  /* Determine if the given point is within the given polygon
+   * Last parameter is the normal to be used for finding projection plane */
+  bool pointInPolygon( Vector3d p, Vector3dArray poly, const Vector3d& projn );
+  
+  /* Find the optimal axial projection plane for a polygon with the specified normal vector
+   * Return value: 0 = YZ, 1 = ZX, 2 = XY (corresponding to vector components of normal) */
+  int findAxialProjectionPlane( const Vector3d& n );
+
+  // Find a projection plane for 2 given planes (normals)
+  Vector3d findProjectionPlane(const Vector3d& n1, const Vector3d& n2);
+
+  // Project a polygon onto a plane defined by point and normal
+  void planarProject(Vector3dArray& poly, const Vector3d& p, const Vector3d& nproj);
+  // Project a point onto a plane defined by point and normal
+  void planarProject(Vector3d& p, const Vector3d& point, const Vector3d& normal);
+  // Project a line (defined by 2 points) onto a plane defined by point and normal
+  void planarProject(Vector3d& p1, Vector3d& p2, const Vector3d& point, const Vector3d& normal);
+
+  // Translate the given polygon so that the centroid is moved to the given origin
+  // Returns amount by which polygon was translated
+  Vector3d translate(Vector3dArray& poly, const Vector3d& origin);
+  // Translate the given polygon along given direction by given amount
+  void translate(Vector3dArray& poly, const Vector3d& dir, double dist);
+
+  // Scale the given polygon about it's centroid by the given scale factor
+  void scale(Vector3dArray& poly, double scale_factor);
+
+  // Rotate the given polygon about it's centroid such tat normal goes to new direction
+  void rotate(Vector3dArray& poly, const Vector3d& normal, const Vector3d& newnormal);
+  // Rotate the given polygon around its normal by given angle
+  void rotate(Vector3dArray& poly, const Vector3d& normal, double angle);
+
+  //uses Rodrigues' rotation formula to do the vector rotation operation
+  void rotateAroundVector(const Vector3d &axis, const double &angle, const bool &ckeckAxisIsUnit, Vector3d &vectorToRotate);
+  void rotateAroundVector(const Vector3d &axis, const double &angle, const bool &ckeckAxisIsUnit, vector<Vector3d> &vectorsToRotate);
+
+  //returns the angle between the two vectors
+  //if one of the vectors has zero length it returns 0
+  double getAngleBetween(const Vector3d &v1, const Vector3d &v2);
+
+  // Resolve a planar polygon into distance and angle parameters for each vertex, based on
+  // the centroid. The angles are w.r.t to the given xref vector (assumed to be normalized).
+  // The yref vector is used to determine quadrant for correct angles
+  // The distances are from the centroid
+  void resolvePolygon(const Vector3dArray& poly, const Vector3d& xref, const Vector3d& yref,
+		      DoubleArray& angle, DoubleArray& distance);
+
+  // Reconstruct a polygon from its resolved parameters and reference axes
+  // The reconstructed polygon will be centered at the origin
+  void reconstructPolygon(Vector3dArray& poly, const Vector3d& xref, const Vector3d& yref,
+			  const DoubleArray& angle, const DoubleArray& distance);
+
+  // Linearly interpolate between 2 given sets of numbers using given parameter
+  // Will do interpolation only upto smaller of 2 given arrays
+  void linearInterpolate(const DoubleArray& start, const DoubleArray& end, DoubleArray& inter, double t);
+
+  // Linearly interpolate between 2 given sets of Vector3ds using given parameter
+  // Will do interpolation only upto smaller of 2 given arrays
+  void linearInterpolate(const Vector3dArray& start, const Vector3dArray& end, Vector3dArray& inter, double t);
+
+  // Do hermite interpolation given 2 end points and 2 end tangents. Compute point and tangent
+  // at point for given parameter
+  void hermiteInterpolate(const Vector3d& p1, const Vector3d& v1, const Vector3d& p2, const Vector3d& v2,
+			  Vector3d& p, Vector3d& v, Vector3d& dvdt, double t);
+
+  // Compute length of a Hermite curve using chord-length summation.
+  // Curve is split into specified number of segments
+  double hermiteCurveLength(const Vector3d& p1, const Vector3d& v1, const Vector3d& p2, const Vector3d& v2,
+			    int numsegs);
+
+  // Compute the centroid and average normal for a given array of points,
+  // assuming they form a polygon and are specified in the correct order (RHS)
+  void computeCentroidAndNormal(const Vector3dArray& p, Vector3d& centroid, Vector3d& normal);
+  void computeEdgeBasedCentroidAndNormal(const Vector3dArray& p, Vector3d& centroid, Vector3d& normal);
+
+
+
+  //Using an averaging process this function reforms a polygon to a regular polygon iteratively
+  void equalizePolygon(const Vector3dArray &in_poly, const int &iterations, Vector3dArray &out_poly);
+  void equalizePolygon(const Vector3dArray &in_poly, Vector3dArray &out_poly);
+
+
+
+
+  // Calculate doo-sabin coordinates for the given array of points,
+  // assuming they form a polygon and are specified in the correct order
+  void computeDooSabinCoords(Vector3dArray& points);
+  
+  // Calculate modified doo-sabin coordinates for the given array of points,
+  // assuming they form a polygon and are specified in the correct order
+  void computeModifiedDooSabinCoords(Vector3dArray& points);
+
+  // Project a point onto a line along the normal from the line through the point
+  Vector3d projectPointOnLine(const Vector3d& p, const Vector3d& p0, const Vector3d& p1);
+
+  // Compute the distance of a point from a line
+  double distPointLine(const Vector3d& p, const Vector3d& p0, const Vector3d& p1);
+
+  // Project two lines onto a plane specified by point and normal
+  // and fine their intersection
+  Vector3d planarProjectAndIntersect(const Vector3d& p00, const Vector3d& p01,
+				     const Vector3d& p10, const Vector3d& p11,
+                     const Vector3d& point, const Vector3d& normal);
+  /*
+  // Compute lighting for a vertex with a given normal and lighting parameters
+  // Returns a color
+  Vector3d computeLighting(const Vector3d& p, const Vector3d& n, const RGBColor& basecolor,
+			   double Ka, double Kd, double Ks, LightPtr lightptr);
+  */
+  // Find the intersection point between two coplanar lines specified by their end points
+  Vector3d intersectCoplanarLines(const Vector3d& p00, const Vector3d& p01,
+				  const Vector3d& p10, const Vector3d& p11);
+} // end namespace
+
+#endif // _DLFLCORE_EXT_H_

@@ -1,0 +1,32 @@
+#ifndef DLFLCUBICBEZIERCONNECT_HH
+#define DLFLCUBICBEZIERCONNECT_HH
+
+#include <DLFLCore.hh>
+#include <DLFLCoreExt.hh>
+namespace DLFL {
+
+    class DLFLCubicBezierCurve
+    {
+        public:
+            DLFLCubicBezierCurve(void);
+            void set (const Vector3d &start, const Vector3d &normal_s,
+                      const Vector3d &end, const Vector3d & normal_e,
+                      const double &offset);
+            Vector3d point_at(const double &t) const;
+            Vector3d differentiate_at(const double &t) const;
+            bool isValid() const;
+            void setInvalid();
+            
+        protected:
+            Vector3d p0,p1,p2,p3;
+            Vector3d d0,d1,d2;
+            Vector3d rotation_axis, original_normal_s, original_normal_e, ns, ne;
+            bool is_valid, is_impossible;
+            double length_param, offset_param, angle, angleFactor;
+
+    };
+
+
+}
+
+#endif // DLFLCUBICBEZIERCONNECT_HH

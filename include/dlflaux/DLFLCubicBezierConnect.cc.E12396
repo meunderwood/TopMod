@@ -1,0 +1,80 @@
+#include "DLFLCubicBezierConnect.hh"
+
+
+namespace DLFL {
+    DLFLCubicBezierCurve::DLFLCubicBezierCurve()
+    {
+        this->is_valid = false;
+    }
+
+    void DLFLCubicBezierCurve::set(const Vector3d &start, const Vector3d &normal_s, const Vector3d &end, const Vector3d &normal_e, const double &offset)
+    {
+        ns = normal_s;
+        ne = normal_e;
+        offset_param = offset;
+        Vector3d p = end-start, n = ne-ns;
+        double a = n.lengthsqr()-1.0;
+        double b = -2*(p*n);
+        double c = p.lengthsqr();
+        double delta = b*b-4*a*c;
+        if (delta<0) {
+            is_valid = false;
+        }else{
+            is_valid = true;
+        }
+        if (is_valid) {
+            double root = sqrt(delta);
+            double t1 = (-b + root)/(2*a);
+            double t2 = (-b - root)/(2*a);
+            length_param = max(t1,t2);
+            if (length_param<=0) {
+                this->is_valid = false;
+            }
+        }
+        if (is_valid) {
+            p0 = start;
+            p1 = p0 + (length_param + offset_param) * ns;
+            p3 = end;
+            p2 = p3 + (length_param + offset_param) * ne;
+            d0 = p1-p0;
+            d1 = p2-p1;
+            d2 = p3-p2;
+        }
+    }
+
+    Vector3d DLFLCubicBezierCurve::point_at(const double &t) const
+    {
+        double u = 1-t;
+        Vector3d p =
+            (u*u*u)     *   p0 +
+            (3*u*u*t)   *   p1 +
+            (3*u*t*t)   *   p2 +
+            (t*t*t)     *   p3 ;
+        return p;
+    }
+
+    Vector3d DLFLCubicBezierCurve::differentiate_at(const double &t) const
+    {
+        double u = 1-t;
+        Vector3d n =
+                (3*u*u)   *   d0 +
+                (6*u*t)   *   d1 +
+                (3*t*t)   *   d2 ;
+        Vector3d normal = n/sqrt(n.lengthsqr());
+        return normal;
+    }
+
+    bool DLFLCubicBezierCurve::isValid() const
+    {
+        return this->is_valid;
+    }
+
+    void DLFLCubicBezierCurve::setInvalid()
+    {
+        this->is_valid = false;
+    }
+
+
+
+
+}

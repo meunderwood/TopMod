@@ -1,0 +1,92 @@
+/*
+*
+* ***** BEGIN GPL LICENSE BLOCK *****
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software  Foundation,
+* Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+*
+* The Original Code is Copyright (C) 2005 by xxxxxxxxxxxxxx
+* All rights reserved.
+*
+* The Original Code is: all of this file.
+*
+* Contributor(s): none yet.
+*
+* ***** END GPL LICENSE BLOCK *****
+*/
+
+/**
+ * \file FreeList.hh
+ */
+
+// Simple linked list for memory management. --- Fenghui
+#ifndef _FREE_LIST_HH_
+#define _FREE_LIST_HH_
+namespace DLFL {
+  // Pointer points to a free DLFLEdge in the memory.
+  class NextOnFreeList {
+  public:
+    NextOnFreeList *next_;
+  private:
+    static NextOnFreeList *pool_;
+  public :
+    // Override new operator
+    inline void* operator new(size_t size) {
+      if(pool_ == NULL) {
+        expandPool();
+      }
+      NextOnFreeList *head = pool_;
+      pool_ = pool_->next_;
+      return head;
+    };
+    // Override delete operator
+    inline void operator delete(void* to_be_deleted) {
+      NextOnFreeList *head = static_cast<NextOnFreeList *>(to_be_deleted);
+      head->next_ = pool_;
+      pool_ = head;
+    };
+    inline void operator delete(void* to_be_deleted, size_t size) {
+      NextOnFreeList *head = static_cast<NextOnFreeList *>(to_be_deleted);
+      head->next_ = pool_;
+      pool_ = head;
+    };
+
+    static void deletePool() {
+      NextOnFreeList *head;
+      while(pool_ != NULL) {
+        head = pool_;
+        pool_ = pool_->next_;
+        delete[] head;
+      }
+    };
+
+  protected:
+    int GetSize() = 0;
+  private:
+    enum {EXPANSION_SIZE = 1024};
+    static void expandPool() {
+      //Allocate an object large enough to hold both objects
+      size_t size = (GetSize() > sizeof(NextOnFreeList)) ? GetSize() :
+                    sizeof(NextOnFreeList);
+      NextOnFreeList *runner = (NextOnFreeList *)malloc(size);
+      pool_ = runner;
+      for(int i = 0; i < EXPANSION_SIZE; i++) {
+        runner->next_ = (NextOnFreeList *)malloc(size);
+        runner = runner->next_;
+      }
+      runner->next_ = NULL;
+    };
+  };
+}
+#endif
